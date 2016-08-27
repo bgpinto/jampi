@@ -1,0 +1,107 @@
+#ifndef _CALLABLE_
+#define _CALLABLE_
+
+/*
+ *	TODO:
+ *	
+ *	1. Implementar passagem de parametros na class task;
+ *	2. Implementar move semantica na task
+ *	3. Finalizar classe task
+ *	5. Testar
+ *
+ *
+ * */
+
+namespace parallel {
+
+template
+<
+	typename ReturnType,
+	typename ...Args
+>
+class Callable {
+	public:
+		virtual ReturnType operator()(Args... args) = 0;
+		virtual Callable<ReturnType, Args...>* clone() const = 0;
+		virtual ~Callable() {}
+};
+
+
+template
+<
+	typename Function,
+	typename ReturnType,
+	typename ...Args
+>
+class CallableImpl : public Callable<ReturnType, Args...>
+{
+	Function callable;	
+	
+	public:
+		CallableImpl(Function f):callable(f) {}
+		
+		~CallableImpl(){}
+		// Assumindo q c.callable seja copy constructible
+		// Testar esse construtor com um objeto complexo 	
+		CallableImpl(const CallableImpl& c):callable(c.callable) {}
+		
+		// Assuming it is copy asignable
+		CallableImpl& operator = (const CallableImpl& c) {
+			
+			callable = c.callable;
+
+			return *this;	
+		}
+
+		ReturnType operator() (Args... args) {
+			return callable(args...);
+		}
+
+		virtual Callable<ReturnType, Args...>* clone() const { 
+			return new CallableImpl<Function, ReturnType, Args...>(*this); 
+		}
+
+
+};
+
+
+template
+<
+	typename PtrToMember,
+	typename PtrToObject,
+	typename ReturnType,
+	typename ...Args
+>
+class MemberCallableImpl : public Callable<ReturnType, Args...>
+{
+	
+	PtrToMember callable;
+	PtrToObject obj;
+	
+	public:
+
+	MemberCallableImpl(PtrToMember c, PtrToObject& o):callable(c), obj(o){}
+	~MemberCallableImpl(){}
+
+	MemberCallableImpl(const MemberCallableImpl& m): callable(m.callable), obj(m.obj){}
+
+	MemberCallableImpl& operator = (const MemberCallableImpl& m) {
+		obj = m.obj;
+		callable = m.callable;
+		return *this;
+	}
+
+	virtual Callable<ReturnType, Args...>* clone() const { 
+		return new MemberCallableImpl<PtrToMember,PtrToObject, ReturnType, Args...>(*this); 
+	}
+
+	ReturnType operator()(Args...args) {
+		return ((*obj).*callable)(args...);
+	}
+
+};
+
+
+};
+
+#endif
