@@ -4,7 +4,6 @@
 /*
  *	TODO:
  *	
- *	1. Implementar passagem de parametros na class task;
  *	2. Implementar move semantica na task
  *	3. Finalizar classe task
  *	5. Testar

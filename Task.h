@@ -39,6 +39,16 @@ class Task {
 		//~Task(){}
 		
 		// O objeto copiado eh destruido	
+		Task(const Task& t):arguments(t.arguments) {
+		       function.reset(t.function.release());
+		 		
+		}
+
+		Task& operator = (const Task& t) {
+			function.reset(t.function.release());
+		       	arguments = t.arguments;	
+			return *this;
+		}
 		Task(Task& t):arguments(t.arguments) {
 		       function.reset(t.function.release());
 		 		
@@ -49,7 +59,7 @@ class Task {
 		       	arguments = t.arguments;	
 			return *this;
 		}
-		
+
 		// Callable tricks for non-member function calls
 		template<class Fn>
 		Task(Fn f, Args...args);
