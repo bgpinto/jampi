@@ -16,7 +16,7 @@ namespace parallel {
 
 template
 <
-	typename ReturnType,
+	typename ReturnType = void,
 	typename ...Args
 >
 class Task {

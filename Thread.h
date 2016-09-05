@@ -5,11 +5,20 @@
 
 namespace parallel {
 
+// The ninja
+class ThreadInterface {
+public:
+	using TASK = parallel::Task<>;
+	virtual ~ThreadInterface(){}
+	virtual void operator()(TASK&) = 0;
+	virtual void join() = 0;
+};
+
+
 template<class TASK>
-class Thread {
+class Thread : public virtual ThreadInterface {
 	public:
 		virtual void operator()(TASK&) = 0;
-		virtual void join() = 0;
 		virtual ~Thread(){}
 
 };
