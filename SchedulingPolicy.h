@@ -8,7 +8,7 @@
 #ifndef _SCHEDULINGPOLICY_
 #define _SCHEDULINGPOLICY_
 
-#include <map>
+#include <unordered_map>
 #include <type_traits>
 #include <string>
 #include "Thread.h"
@@ -50,9 +50,9 @@ class SchedulingPolicy {
 	
 	Algorithm scheme;
 
-	std::multimap<std::string, parallel::ThreadInterface* > context_threads;
+	std::unordered_multimap<std::string, parallel::ThreadInterface* > context_threads;
 	
-	using IndexIterator = typename std::multimap< std::string, parallel::ThreadInterface* >::iterator;
+	using IndexIterator = typename std::unordered_multimap< std::string, parallel::ThreadInterface* >::iterator;
 	
 public:
 
