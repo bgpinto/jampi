@@ -21,7 +21,6 @@ template
 >
 class Task {
 	
-	// Talvez seja o caso de task gerenciar os parametros tambem
 	std::unique_ptr< Callable<ReturnType, Args...> > function;
 	
 	std::tuple<Args...> arguments;
@@ -36,7 +35,7 @@ class Task {
 	public:
 		
 		Task() = default;
-		//~Task(){}
+		~Task(){}
 		
 		// O objeto copiado eh destruido	
 		Task(const Task& t):arguments(t.arguments) {
@@ -67,11 +66,7 @@ class Task {
 		template<class PtrToMember, class PtrToObject>
 		Task(PtrToMember m, PtrToObject o, Args...args);
 
-		// here it should be a member function call
-
-		// the interface - question now is: wheter or not and how to store args;
 		ReturnType operator () () {
-			//if (function) return (*function)(args...);
 			constexpr auto size = std::tuple_size<decltype(arguments)>::value;
 			return unpackArguments(std::make_index_sequence<size>{});
 		}
