@@ -13,6 +13,18 @@
 
 namespace parallel {
 
+/*
+ *  Uma feature potencialmente util para esta classe seria a capacidade
+ *  de se converter/retornar no callable que a mesma 'gerencia' 
+ *  ( parece nao ser algo tao simples de fazer.) 
+ * */
+
+/*
+ *	Como esta classe suporta funcoes template? (membro ou nao)
+ *	Funciona perfeitamente. Ponto pra mim.
+ *
+ * */
+
 
 template
 <

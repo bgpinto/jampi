@@ -3,7 +3,6 @@
 
 #include <unordered_map>
 #include <type_traits>
-#include <string>
 #include "Thread.h"
 
 
@@ -19,26 +18,26 @@ class SchedulingPolicy {
 	
 	Algorithm scheme;
 
-	std::unordered_multimap<std::string, parallel::ThreadInterface* > context_threads;
+	std::unordered_multimap<int, parallel::ThreadInterface* > context_threads;
 	
-	using IndexIterator = typename std::unordered_multimap< std::string, parallel::ThreadInterface* >::iterator;
+	using IndexIterator = typename std::unordered_multimap< int, parallel::ThreadInterface* >::iterator;
 	
 public:
 
 	template<class TASK,  class U = void >	
-	void spawn(TASK& t, std::string& context) {
+	void spawn(TASK& t, int context) {
 
 		typedef typename std::conditional<std::is_same<void, THREAD>::value, U, THREAD >::type T;
 
 		T* thr = new T;
 
-		context_threads.insert(std::pair<std::string, parallel::ThreadInterface* >(context, thr ));
+		context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
 		
 		thr->operator()(t);	
 
 	}
 
-	void sync(std::string& context) {
+	void sync(int context) {
 
 		std::pair<IndexIterator, IndexIterator> joinable_threads = context_threads.equal_range(context);
 

@@ -1,81 +1,105 @@
-/*
- *	NOTE:
+
+/*	
+ *	TODO:
  *
- *	Este codigo nao compila, pois ha ainda coisas
- *	que precisam ser resolvidas na classe Task.
- *	No entanto, eh o esqueleto a implementacao final
- *	do padrao for paralelo;
- *
- *	Este esboco eh importante, pois expoe servicos
- *	necessarios que nao estao presentes na classe
- *	policy, por exemplo.
- *
+ *	1. Melhorar nomes de identificadores
+ *	2. Implementar compatibilidade da range com std::begin/end
+ *	3. Implementar uma funcao auxiliar para gerar essa range
+ *	4. Adicionar PARALLEL a todas as macros guarda
+ *	5. Adicionar SIFNAE se possivel
  * */
 
 #ifndef _FOR_
 #define _FOR_
 
 #include <type_traits>
-#include "Policy.h"
+#include <string>
+#include "Task.h"
+#include "SchedulingPolicy.h"
 
 namespace parallel {
 
 
 template
 <
-	typename P = Policy<Thread>,
-	typename R = Range,
-	typename C = Callable,
-        typename ...Args	
+	class S,
+	template <typename> class T,
+	typename R,
+	typename Fn
+        
 >
-void split_and_run(P& policy, R& r, C fn, Args... args) {
+void split_and_run(S& policy, R& r, Fn& f, int grainSize) {
 
-	if (r.end() > r.begin()) {
-
-		// Precisa dividir a range e passar para a nova tarefa
-
-		// Gera uma tarefa para continuar o for em paralelo
-		//parallel::Task<decltype(split_and_run)> job(/*... Argumentos e nao soh o codigo chamador*/);
-
-		// Cria uma thread e associa a nova tarefa para carregar a execucao em paralelo seguindo a politica
-		policy(job);
-		
-		// Executa a porcao do for ao qual a thread eh responsavel
-		//fn(args...);
+	// posteriormente, revisar este algoritmo de divisao	
 	
-		policy.sync(); // sincroniza a execucao das outras threads
+	int size = r.end() - r.begin();
+	
+	if (((double)size/grainSize) > 1.0 ) {
+		
+		// substituir por uma funcao e std;;begin/end
+		int alpha = size / 2;
+		R right(r.begin(), r.begin() + alpha);
+		R left(r.begin() + alpha, r.end());
 
+		parallel::Task<void, S&, R&, Fn&, unsigned int>
+		       	for_job_right(split_and_run<S,T, R,Fn>, policy, right, f, grainSize);	
+		
+		parallel::Task<void, S&, R&, Fn&, unsigned int>
+		       	for_job_left(split_and_run<S,T, R,Fn>, policy, left, f, grainSize);	
+
+		using TASK = decltype(for_job_right);
+		
+		// tenho que achar um jeito de gerar um contexto unico 
+		// para cada grupo de thread por chamada de funcao
+		// se nao, da problema
+		int context = r.begin() + alpha;	
+		
+
+		policy.template spawn<TASK, T<TASK> >(for_job_right, context);
+		policy.template spawn<TASK, T<TASK> >(for_job_left, context);
+		
+		policy.sync(context);
+	
+	} else {
+	
+		f(r);
 	}
 
 }
-	
 
 template
-<
-	typename <typename> class P = Policy<Thread>,
-	typename R = Range,
-	typename C = Callable,
-	typename ...Args,
-	class AssertCompatible =
-	std::enable_if<
-		std::is_base_of< parallel::Policy, P>::value
-	>::type
+<	
+	typename SchedAlg,
+	template <typename>class ThreadType,
+	typename R,
+	typename Fn
 >
-for(R& r, C fn, Args... args) { // o callable acho q deve ser copiado
+void for_(R& r, Fn& f, int grainSize) { // o callable acho q deve ser copiado
 
-	P policy;
 
+	// substituir por uma funcao e std;;begin/end
 	int half = r.end() / 2;
 	R right(r.begin(), half);
 	R left(half, r.end());
 
-	parallel::Task<> for_job_right();	
-	parallel::Task<> for_job_left();
 
-	policy(for_job_left);
-	policy(for_job_right);
+	parallel::SchedulingPolicy<SchedAlg> scheduler;
+	
+	using SCHED = decltype(scheduler);
+	
+	parallel::Task<void, SCHED&, R&, Fn&, unsigned int> 
+		for_job_right(split_and_run<SCHED, ThreadType, R, Fn>, scheduler, right, f, grainSize);	
+	parallel::Task<void, SCHED&, R&, Fn&, unsigned int> 
+		for_job_left(split_and_run<SCHED, ThreadType, R, Fn>, scheduler, left, f, grainSize);
 
-	policy.sync_all();	
+	using TASK = decltype(for_job_left);
+
+	int context = 0;	
+
+	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_left, context);
+	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_right, context);
+
+	scheduler.sync(context);	
 
 }
 
