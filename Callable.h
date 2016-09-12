@@ -42,8 +42,10 @@ class CallableImpl : public Callable<ReturnType, Args...>
 		~CallableImpl(){}
 		// Assumindo q c.callable seja copy constructible
 		// Testar esse construtor com um objeto complexo 	
+		//CallableImpl(const CallableImpl& c):callable(c.callable) {}
 		CallableImpl(const CallableImpl& c):callable(c.callable) {}
 		
+
 		// Assuming it is copy asignable
 		CallableImpl& operator = (const CallableImpl& c) {
 			
@@ -56,6 +58,7 @@ class CallableImpl : public Callable<ReturnType, Args...>
 			return callable(args...);
 		}
 
+		
 		virtual Callable<ReturnType, Args...>* clone() const { 
 			return new CallableImpl<Function, ReturnType, Args...>(*this); 
 		}

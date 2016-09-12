@@ -50,6 +50,7 @@ class Task {
 		~Task(){}
 		
 		// O objeto copiado eh destruido	
+		
 		Task(const Task& t):arguments(t.arguments) {
 		       function.reset(t.function.release());
 		 		

@@ -1,40 +1,96 @@
-/*
- *	NOTE:
- *
- *	Este codigo nao compila, pois ha ainda coisas
- *	que precisam ser resolvidas na classe Task.
- *	No entanto, eh o esqueleto a implementacao final
- *	do padrao for paralelo;
- *
- *	Este esboco eh importante, pois expoe servicos
- *	necessarios que nao estao presentes na classe
- *	policy, por exemplo.
- *
- * */
-
 #ifndef _REDUCE_
 #define _REDUCE_
 
 #include <type_traits>
-#include "Policy.h"
+#include <vector>
+#include <atomic>
+#include <iostream>
 
-template
-<
-	typename T,
-	typename ReductionOperator, 
-	typename <typename> class P = Policy<Thread>,
-	class AssertCompatible =
+#include "SchedulingPolicy.h"
+
+
+
+/*
+class AssertCompatible =
 	std::enable_if<
 		std::is_base_of< parallel::Policy, P>::value
 	>::type
+*/
+
+namespace parallel {
+
+
+template
+<
+	typename SchedulerType,
+	template <typename> class ThreadType,
+	typename ReductionOperator,
+	typename T	
 >
-T reduce(T& collection, int size) { // preciso passar o tamanho?
-
-	ReductionOperator op;
+T reduce_helper(SchedulerType& S, std::vector<T>& collection, int size) {
 	
-	// versao iterativa do algoritmo	
+	if (size == 1) {
+		//std::cout << "With size = " << size << std::endl;
+		return collection[0];
+	} else {
+		
+		int level_index = size;
+		
+		//std::cout << "With size = " << level_index << std::endl;
 
+
+		if ((level_index % 2)!= 0) {
+			ReductionOperator op;
+			//std::cout << "Correcting odd sizes..\n";
+			level_index = level_index - 1;
+			collection[0] = op( collection[0], collection[level_index] );
+		}
+
+		level_index = level_index / 2;
+
+		
+		for (int i = 0; i < level_index; i++ ) {
+
+			parallel::Task<void> reduce_job([i, level_index, &collection]( )->void {
+				
+				ReductionOperator op;	
+
+				int index = i + level_index;
+				
+				collection[i] = op(collection[i], collection[index]);			
+			});
+
+			//reduce_job();
+			using TASK = decltype(reduce_job);
+
+			S.template spawn< TASK, ThreadType<TASK> >(reduce_job, level_index);
+		}
+
+		 S.template sync(level_index);
+
+ 		 return reduce_helper<SchedulerType, ThreadType, ReductionOperator, T >(S, collection, level_index);	
+
+	}
 
 	return T();
 }
+
+
+template
+<
+	typename SchedAlg,
+	template <typename> class ThreadType,
+	typename ReductionOperator, 
+	typename T
+>	
+T reduce(std::vector<T>& collection) { 
+	
+	parallel::SchedulingPolicy<SchedAlg> scheduler;	
+
+	return reduce_helper<decltype(scheduler), ThreadType, ReductionOperator, T>(scheduler, collection, collection.size()); 
+}
+
+
+
+};
 #endif
