@@ -18,6 +18,7 @@
 #include "SchedulingPolicy.h"
 
 #include <iostream>
+#include <cstdio>
 
 namespace parallel {
 
@@ -34,15 +35,15 @@ void split_and_run(S& policy, R& r, Fn& f, int grainSize) {
 
 	// posteriormente, revisar este algoritmo de divisao	
 
-	std::cout << "From Split and Run with rb = " << r.begin() << " re = " << r.end() << std::endl;
+	//std::cout << "From Split and Run with rb = " << r.begin() << " re = " << r.end() << std::endl;
 
 	int size = r.end() - r.begin();
 	
 
 
-	if (((double)size/grainSize) > 1.0 ) {
+	if (( size/grainSize) > 1.0 ) {
 	
-		std::cout << "Division factor = " << (double)size/grainSize <<std::endl; 
+		//std::cout << "Division factor = " << (double)size/grainSize <<std::endl; 
 
 		// substituir por uma funcao e std;;begin/end
 		int alpha = size / 2;
@@ -62,8 +63,9 @@ void split_and_run(S& policy, R& r, Fn& f, int grainSize) {
 		// se nao, da problema
 		int context = r.begin() + alpha;	
 		
-		
-		std::cout << "Context is = " << context << std::endl;
+		printf("Context is %d\n", context);
+
+		//std::cout << "Context is = " << context << std::endl;
 
 		// push(for_job_left)		
 
@@ -112,6 +114,8 @@ void for_(R& r, Fn& f, int grainSize) { // o callable acho q deve ser copiado
 	using TASK = decltype(for_job_left);
 
 	int context = 0;	
+
+	printf("Context in root is = %d\n", context);
 
 	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_right, context);
 	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_left, context);

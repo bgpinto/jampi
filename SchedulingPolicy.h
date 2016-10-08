@@ -1,8 +1,9 @@
 #ifndef _SCHEDULINGPOLICY_
 #define _SCHEDULINGPOLICY_
 
-//#include <unordered_map>
-#include <map> // pode nao ser problema com o unordered map
+#include <unordered_map>
+//#include <map> // pode nao ser problema com o unordered map
+#include <algorithm>
 #include <type_traits>
 #include <exception>
 
@@ -21,9 +22,9 @@ class SchedulingPolicy {
 	
 	Algorithm scheme;
 
-	std::multimap<int, parallel::ThreadInterface* > context_threads;
+	std::unordered_multimap<int, parallel::ThreadInterface* > context_threads;
 	
-	using IndexIterator = typename std::multimap< int, parallel::ThreadInterface* >::iterator;
+	using IndexIterator = typename std::unordered_multimap< int, parallel::ThreadInterface* >::iterator;
 	
 public:
 
@@ -33,52 +34,57 @@ public:
 		typedef typename std::conditional<std::is_same<void, THREAD>::value, U, THREAD >::type T;
 
 		T* thr = new T;
+		
+		//T* thr = scheme.create<T>( task, context);
 
-		std::multimap<int, parallel::ThreadInterface*>::iterator pp = context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
-		//context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
+		//std::multimap<int, parallel::ThreadInterface*>::iterator pp = context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
+		context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
 		//if (pp->second == thr) std::cout << "Apontam iguais\n";
 
 		thr->operator()(t);
 		
-		thr = NULL;
+		//thr = NULL;
 			
 
 	}
 
 	void sync(int context = 0) {
 
-		std::pair<IndexIterator, IndexIterator> joinable_threads = context_threads.equal_range(context);
+		//std::pair<IndexIterator, IndexIterator> joinable_threads = context_threads.equal_range(context);
 
-		for (IndexIterator itr = joinable_threads.first; itr != joinable_threads.second; itr++) {
+		//std::cout << "Joining Context = " << context << std::endl;
+
+		auto joinable_threads = context_threads.equal_range(context);
+
+		for_each(joinable_threads.first, joinable_threads.second, [](std::unordered_multimap<int, parallel::ThreadInterface*>::value_type& thread){
 			
-			if (itr->second == NULL) {  
-				std::cout << "Found Null\n";
-				
-				break;
+			thread.second->join();		
+		});
+	
+		/*
+		for (IndexIterator itr = joinable_threads.first; itr!= joinable_threads.second; ++itr){
+			
+			if (itr->second == nullptr) {  
+				std::cout << "Found NULLLL\n";	
 			}
 			else {
-				
 				try {
-					itr->second->join();
-					delete itr->second;
-				
-				} catch(std::exception& e ) { 
-					std::cout << "Exception no Join = "<< e.what() << std::endl;
-				}	
-			}
+						if(itr->second != nullptr) {  
+							itr->second->join(); // ainda da segfault
+							delete itr->second;
+						}
+					} catch(std::exception& e ) { 
+						std::cout << "Exception no Join = "<< e.what() << std::endl;
+						
+						if (!itr->second) delete itr->second;
+					}	
+				}
 
-			/*	
-			if (*itr->second != NULL) { 
-				itr->second->join();
-				delete itr->second;
-			} else {
-				std::cout << "DELETED POINTER !!\n";       
-			}*/	
 		
 		}
 		
-		context_threads.erase(context);	
-		
+		//context_threads.erase(context);	
+		*/
 	}
 	
 	~SchedulingPolicy(){}

@@ -51,19 +51,24 @@ class Task {
 		
 		// O objeto copiado eh destruido	
 		
+		// Aparentemente, esta versao eh a forma correta de copiar os ptrs
+		// deveria modificar no resto;	-- Errado, com get nao ha copia profunda
+		// Precisa do -fpermissive	
+		/*
 		Task(const Task& t):arguments(t.arguments) {
-		       function.reset(t.function.release());
+		       function.reset(t.function.get());
+		       //t.function.reset();
 		 		
-		}
+		}*/
 
 		Task& operator = (const Task& t) {
 			function.reset(t.function.release());
 		       	arguments = t.arguments;	
 			return *this;
 		}
-		Task(Task& t):arguments(t.arguments) {
+
+		Task(const Task& t):arguments(t.arguments) {
 		       function.reset(t.function.release());
-		 		
 		}
 
 		Task& operator = (Task& t) {
