@@ -3,11 +3,6 @@
 
 #include "Thread.h"
 
-// debug mode
-
-#include <iostream>
-
-
 namespace parallel { 
 
 class ThreadData{

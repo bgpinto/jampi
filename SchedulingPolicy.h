@@ -20,11 +20,6 @@
 #include <system_error>
 #include "ThreadData.h"
 
-
-// debug mode
-
-#include <iostream>
-
 namespace parallel {
 
 template
@@ -53,8 +48,6 @@ public:
 		context_join.store(context_join);
 
 		T* thr = new T;
-
-		if ( thr == nullptr) std::cout << "Null THR\n";
 
 		thread_table[thread_counter].setThreadPointer(thr);
 		thread_table[thread_counter].setThreadContext(context);
@@ -100,7 +93,6 @@ public:
 			 thread_counter(0)
 			{ thread_table = new parallel::ThreadData[size];}
 
-	// Implementado depois
 	~SchedulingPolicy(){
 
 		for (int i = 0; i < thread_counter; i++) { 

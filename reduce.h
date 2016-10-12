@@ -84,8 +84,9 @@ template
 	typename T
 >	
 T reduce(std::vector<T>& collection) { 
-	
-	parallel::SchedulingPolicy<SchedAlg> scheduler;	
+
+	// construtor temporario, por que ta alocando memoria direto	
+	parallel::SchedulingPolicy<SchedAlg> scheduler(1000);	
 
 	return reduce_helper<decltype(scheduler), ThreadType, ReductionOperator, T>(scheduler, collection, collection.size()); 
 }
