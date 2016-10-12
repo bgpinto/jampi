@@ -6,9 +6,15 @@
 #include <algorithm>
 #include <type_traits>
 #include <exception>
+#include <system_error>
+#include <thread>
+
+#include <mutex>
 
 
 #include "Thread.h"
+
+std::mutex context_mutex;
 
 
 namespace parallel {
@@ -35,56 +41,45 @@ public:
 
 		T* thr = new T;
 		
-		//T* thr = scheme.create<T>( task, context);
-
-		//std::multimap<int, parallel::ThreadInterface*>::iterator pp = context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
-		context_threads.insert(std::pair<int, parallel::ThreadInterface* >(context, thr ));
-		//if (pp->second == thr) std::cout << "Apontam iguais\n";
-
-		thr->operator()(t);
-		
-		//thr = NULL;
-			
-
+		if(thr != nullptr) {
+			context_threads.emplace(context, thr);
+			thr->operator()(t);
+		} 
 	}
 
+
+	// o que acontece se duas threads querem dar join em uma mesma thread ou acessarem 
+	// a tabela;
 	void sync(int context = 0) {
 
-		//std::pair<IndexIterator, IndexIterator> joinable_threads = context_threads.equal_range(context);
+		std::pair<IndexIterator, IndexIterator> joinable_threads = context_threads.equal_range(context);
 
-		//std::cout << "Joining Context = " << context << std::endl;
-
-		auto joinable_threads = context_threads.equal_range(context);
-
-		for_each(joinable_threads.first, joinable_threads.second, [](std::unordered_multimap<int, parallel::ThreadInterface*>::value_type& thread){
-			
-			thread.second->join();		
-		});
-	
 		/*
-		for (IndexIterator itr = joinable_threads.first; itr!= joinable_threads.second; ++itr){
-			
-			if (itr->second == nullptr) {  
-				std::cout << "Found NULLLL\n";	
-			}
-			else {
-				try {
-						if(itr->second != nullptr) {  
-							itr->second->join(); // ainda da segfault
-							delete itr->second;
-						}
-					} catch(std::exception& e ) { 
-						std::cout << "Exception no Join = "<< e.what() << std::endl;
-						
-						if (!itr->second) delete itr->second;
-					}	
-				}
-
-		
+		context_mutex.lock();
+		for (IndexIterator it = joinable_threads.first; it != joinable_threads.second; it++) { 	
+			std::cout << it->first << " -- " << it->second << std::endl;
 		}
+		context_mutex.unlock();		
 		
-		//context_threads.erase(context);	
 		*/
+		for (IndexIterator it = joinable_threads.first; it != joinable_threads.second; it++) { 
+
+				try { 
+					if (it->second != nullptr) { 
+						it->second->join();
+					}
+				} catch (std::system_error& e ) {
+				       
+					if ( e.code() ==  std::errc::invalid_argument || e.code() == std::errc::no_such_process) { 
+						std::cout << "Foooo\n";
+					}
+						
+				       	
+				
+				}
+			}	
+		//context_mutex.unlock();
+
 	}
 	
 	~SchedulingPolicy(){}

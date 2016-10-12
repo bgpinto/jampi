@@ -17,6 +17,8 @@
 #include "Task.h"
 #include "SchedulingPolicy.h"
 
+#include "Range.h"
+
 #include <iostream>
 #include <cstdio>
 
@@ -27,11 +29,10 @@ template
 <
 	class S,
 	template <typename> class T,
-	typename R,
 	typename Fn
         
 >
-void split_and_run(S& policy, R& r, Fn& f, int grainSize) {
+void split_and_run(S& policy, Range& r, Fn& f, int grainSize, int last_context) {
 
 	// posteriormente, revisar este algoritmo de divisao	
 
@@ -47,34 +48,40 @@ void split_and_run(S& policy, R& r, Fn& f, int grainSize) {
 
 		// substituir por uma funcao e std;;begin/end
 		int alpha = size / 2;
-		R right(r.begin(), r.begin() + alpha);
-		R left(r.begin() + alpha, r.end());
+		Range right(r.begin(), r.begin() + alpha);
+		Range left(r.begin() + alpha, r.end());
 
-		parallel::Task<void, S&, R&, Fn&, unsigned int>
-		       	for_job_right(split_and_run<S,T, R,Fn>, policy, right, f, grainSize);	
+
+		int context_left  = last_context * 2;
+		int context_right = (last_context * 2) + 1;
+
+		// nota interessante: overhead de criacao de tarefas?
+		parallel::Task<void, S&, Range&, Fn&, int, int>
+		for_job_right(split_and_run<S, T, Fn>, policy, right, f, grainSize, context_right);	
 		
-		parallel::Task<void, S&, R&, Fn&, unsigned int>
-		       	for_job_left(split_and_run<S,T, R,Fn>, policy, left, f, grainSize);	
+		parallel::Task<void, S&, Range&, Fn&, int, int>
+		for_job_left(split_and_run<S, T, Fn>, policy, left, f, grainSize, context_left);	
 
 		using TASK = decltype(for_job_right);
 		
 		// tenho que achar um jeito de gerar um contexto unico 
 		// para cada grupo de thread por chamada de funcao
 		// se nao, da problema
-		int context = r.begin() + alpha;	
+		//int context = r.begin() + alpha;	
 		
-		printf("Context is %d\n", context);
+		//printf("Context is %d\n", context);
 
 		//std::cout << "Context is = " << context << std::endl;
 
 		// push(for_job_left)		
 
-		policy.template spawn<TASK, T<TASK> >(for_job_right, context);
+		policy.template spawn<TASK, T<TASK> >(for_job_right, context_right);
 		
 		// if j == pop : policy.spawn... j else alguem robou j da lista
-		policy.template spawn<TASK, T<TASK> >(for_job_left, context);
+		policy.template spawn<TASK, T<TASK> >(for_job_left, context_left);
 		
-		policy.sync(context);
+		policy.sync(context_right);
+		policy.sync(context_left);
 	
 	} else {
 	
@@ -87,17 +94,14 @@ template
 <	
 	typename SchedAlg,
 	template <typename>class ThreadType,
-	typename R,
 	typename Fn
 >
-void for_(R& r, Fn& f, int grainSize) { // o callable acho q deve ser copiado
-// mudar o nome do parallel_for
+void For(Range& r, int grainSize, Fn& f)  { 
 
 	// substituir por uma funcao e std;;begin/end
 	int half = r.end() / 2;
-	R right(r.begin(), half); // pode ser que os problemas sejam por causa disso:
-					// passando range criada na pilha
-	R left(half, r.end());
+	Range right(r.begin(), half);
+	Range left(half, r.end());
 
 	std::cout << "Right begin and end = " << right.begin() << " " << right.end() << std::endl;
 	std::cout << "Left begin and end = " << left.begin() << " " << left.end() << std::endl;
@@ -106,22 +110,21 @@ void for_(R& r, Fn& f, int grainSize) { // o callable acho q deve ser copiado
 	
 	using SCHED = decltype(scheduler);
 	
-	parallel::Task<void, SCHED&, R&, Fn&, unsigned int> 
-		for_job_right(split_and_run<SCHED, ThreadType, R, Fn>, scheduler, right, f, grainSize);	
-	parallel::Task<void, SCHED&, R&, Fn&, unsigned int> 
-		for_job_left(split_and_run<SCHED, ThreadType, R, Fn>, scheduler, left, f, grainSize);
+	parallel::Task<void, SCHED&, Range&, Fn&, int, int> 
+	for_job_right(split_and_run<SCHED, ThreadType,  Fn>, scheduler, right, f, grainSize, 1);
+
+	parallel::Task<void, SCHED&, Range&, Fn&, int, int> 
+	for_job_left(split_and_run<SCHED, ThreadType,  Fn>, scheduler, left, f, grainSize, 2);
 
 	using TASK = decltype(for_job_left);
 
-	int context = 0;	
+	//int context = 0;	
+	
+	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_right, 1);
+	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_left,  2);
 
-	printf("Context in root is = %d\n", context);
-
-	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_right, context);
-	scheduler.template spawn<TASK, ThreadType<TASK>>(for_job_left, context);
-
-	scheduler.sync(context);	
-
+	scheduler.sync(1);	
+	scheduler.sync(2);	
 }
 
 

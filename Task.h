@@ -25,6 +25,12 @@ namespace parallel {
  *
  * */
 
+template<int ...> struct seq {};
+
+template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
+
+template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
+
 
 template
 <
@@ -37,8 +43,8 @@ class Task {
 	
 	std::tuple<Args...> arguments;
 
-	template<std::size_t... index>
-	ReturnType unpackArguments(std::index_sequence<index...>) {
+	template<int ... index>
+	ReturnType unpackArguments(seq<index ...>){
 		if (function) return (*function)(std::get<index>(arguments)...);
 
 		return ReturnType();
@@ -50,22 +56,17 @@ class Task {
 		~Task(){}
 		
 		// O objeto copiado eh destruido	
-		
-		// Aparentemente, esta versao eh a forma correta de copiar os ptrs
-		// deveria modificar no resto;	-- Errado, com get nao ha copia profunda
-		// Precisa do -fpermissive	
-		/*
-		Task(const Task& t):arguments(t.arguments) {
-		       function.reset(t.function.get());
+		//Task(Task& t):arguments(t.arguments), function( new Callable<ReturnType, Args ...>( *t.function )) {
 		       //t.function.reset();
 		 		
-		}*/
+		//}
 
+		/*	
 		Task& operator = (const Task& t) {
 			function.reset(t.function.release());
 		       	arguments = t.arguments;	
 			return *this;
-		}
+		}*/
 
 		Task(const Task& t):arguments(t.arguments) {
 		       function.reset(t.function.release());
@@ -85,8 +86,7 @@ class Task {
 		Task(PtrToMember m, PtrToObject o, Args...args);
 
 		ReturnType operator () () {
-			constexpr auto size = std::tuple_size<decltype(arguments)>::value;
-			return unpackArguments(std::make_index_sequence<size>{});
+			return unpackArguments(typename gens<sizeof...(Args)>::type());
 		}
 
 };
