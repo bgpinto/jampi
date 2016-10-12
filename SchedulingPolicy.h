@@ -1,21 +1,29 @@
 #ifndef _SCHEDULINGPOLICY_
 #define _SCHEDULINGPOLICY_
 
-#include <unordered_map>
-//#include <map> // pode nao ser problema com o unordered map
-#include <algorithm>
-#include <type_traits>
-#include <exception>
-#include <system_error>
-#include <thread>
+/*
+ * NOTE:
+ *  (1)  Nessa implementacao, nao estou preocupado com a forma que a memoria da 
+ *  tabela de threads eh gerenciada. Logo, threads que sofrem join nao estao 
+ *  sendo deletadas (ainda, isso poderia ser implementado em ThreadData::join_request)
+ *  
+ *  (2) No metodo spawn:
+ *  Se eu conseguir adicionar a informacao da template em T, o usuario nao precisa 
+ *  digitar isso. Eh algo a se pensar;
+ *
+ * */
+
 
 #include <mutex>
+#include <atomic>
+#include <type_traits>
+#include <system_error>
+#include "ThreadData.h"
 
 
-#include "Thread.h"
+// debug mode
 
-std::mutex context_mutex;
-
+#include <iostream>
 
 namespace parallel {
 
@@ -27,11 +35,12 @@ template
 class SchedulingPolicy {
 	
 	Algorithm scheme;
+	std::mutex thread_table_mutex;
+	std::atomic<int> context_join;
+	int thread_counter;
 
-	std::unordered_multimap<int, parallel::ThreadInterface* > context_threads;
-	
-	using IndexIterator = typename std::unordered_multimap< int, parallel::ThreadInterface* >::iterator;
-	
+	parallel::ThreadData* thread_table;
+
 public:
 
 	template<class TASK,  class U = void >	
@@ -39,52 +48,69 @@ public:
 
 		typedef typename std::conditional<std::is_same<void, THREAD>::value, U, THREAD >::type T;
 
+		thread_table_mutex.lock();
+		
+		context_join.store(context_join);
+
 		T* thr = new T;
+
+		if ( thr == nullptr) std::cout << "Null THR\n";
+
+		thread_table[thread_counter].setThreadPointer(thr);
+		thread_table[thread_counter].setThreadContext(context);
+		thread_counter++;
+
+		context_join.store(-1);
 		
-		if(thr != nullptr) {
-			context_threads.emplace(context, thr);
-			thr->operator()(t);
-		} 
+		thread_table_mutex.unlock();
+
+		thr->operator()(t);		
+	
 	}
 
 
-	// o que acontece se duas threads querem dar join em uma mesma thread ou acessarem 
-	// a tabela;
 	void sync(int context = 0) {
-
-		std::pair<IndexIterator, IndexIterator> joinable_threads = context_threads.equal_range(context);
-
-		/*
-		context_mutex.lock();
-		for (IndexIterator it = joinable_threads.first; it != joinable_threads.second; it++) { 	
-			std::cout << it->first << " -- " << it->second << std::endl;
-		}
-		context_mutex.unlock();		
-		
-		*/
-		for (IndexIterator it = joinable_threads.first; it != joinable_threads.second; it++) { 
-
+		int inserted_threads = thread_counter; 
+		for (int i = 0; i < inserted_threads; i++) { 
+			if ( thread_table[i].equals(context)) { 
 				try { 
-					if (it->second != nullptr) { 
-						it->second->join();
-					}
-				} catch (std::system_error& e ) {
-				       
-					if ( e.code() ==  std::errc::invalid_argument || e.code() == std::errc::no_such_process) { 
-						std::cout << "Foooo\n";
-					}
+					int current_context = context_join.load();
+					while(!context_join.compare_exchange_weak(current_context, context) );
 						
-				       	
-				
-				}
-			}	
-		//context_mutex.unlock();
+					thread_table[i].join_request();			
 
+				} catch(std::system_error& se) { 
+					#ifdef EXECPTION_ON
+						std::cout <<
+						"Exception fired at: method sync with context = " << context 
+						<< std::endl; 
+					#endif	
+				}
+			 }
+
+		}
 	}
 	
-	~SchedulingPolicy(){}
 	
-	SchedulingPolicy():context_threads(){}
+	
+	// Talvez eu tenha que guardar size para o caso do cara
+	// tentar alocar mais threads que size;;
+	SchedulingPolicy(const unsigned int size): 
+			 context_join(0),
+			 thread_counter(0)
+			{ thread_table = new parallel::ThreadData[size];}
+
+	// Implementado depois
+	~SchedulingPolicy(){
+
+		for (int i = 0; i < thread_counter; i++) { 
+			if (thread_table[i].getThreadPointer()) thread_table[i].join_request();
+		}
+		
+		if (thread_table != nullptr) {  delete[] thread_table;  }
+	}
+	
+	
 	SchedulingPolicy(const SchedulingPolicy&) = delete;
 	SchedulingPolicy& operator = (const SchedulingPolicy&) = delete;
 
