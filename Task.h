@@ -5,6 +5,8 @@
 #include <tuple>
 #include <utility>
 
+#include <future>
+
 #include "Callable.h"
 
 
@@ -47,13 +49,14 @@ class Task {
 	
 	std::tuple<Args...> arguments;
 
-	ReturnType returnValue;
-		
+	
+	std::promise<ReturnType> return_channel;
+
 	template<int ... index>
 	ReturnType unpackArguments(seq<index ...>){
-		if (function) returnValue = (*function)(std::get<index>(arguments)...);
+		if (function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
 
-		return returnValue;
+		return ReturnType();
 	}
 
 	public:
@@ -61,7 +64,7 @@ class Task {
 		typedef ReturnType returnType_; 
 		
 
-		Task():function(nullptr), arguments(), returnValue() { }
+		Task():function(nullptr), arguments(), return_channel() { }
 		~Task(){}
 		
 		// O objeto copiado eh destruido	
@@ -98,7 +101,7 @@ class Task {
 			return unpackArguments(typename gens<sizeof...(Args)>::type());
 		}
 
-		ReturnType getTaskResult() { return returnValue; }
+		std::future<ReturnType> getTaskFuture() { return return_channel.get_future(); }
 
 };
 
