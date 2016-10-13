@@ -4,15 +4,9 @@
 #include <memory>
 #include <tuple>
 #include <utility>
-#include <future>
 
 #include "Callable.h"
 
-
-/*
- *	Hipotese: parece que make_integer_sequence nao funciona/existe no g++ 4.8.4
- *	Falso, existe, porem sobre a flag -std=c++14
- * */
 
 namespace parallel {
 
@@ -22,11 +16,18 @@ namespace parallel {
  *  ( parece nao ser algo tao simples de fazer.) 
  * */
 
-/*
- *	Como esta classe suporta funcoes template? (membro ou nao)
- *	Funciona perfeitamente. Ponto pra mim.
+
+/* NOTE: Thu 13 Oct 2016 11:26:59 AM BRT
+ *	
+ *	(1) Seria legal ter uma forma de passar os parametros do invocavel
+ *	em um outro momento no tempo e nao apenas na construcao de uma tarefa.
+ *
+ *	Algo do tipo: set_args(Args ....args) {  tuple = args;  }
+ *
+ *
  *
  * */
+
 
 template<int ...> struct seq {};
 
@@ -46,22 +47,21 @@ class Task {
 	
 	std::tuple<Args...> arguments;
 
+	ReturnType returnValue;
+		
 	template<int ... index>
-	std::future<ReturnType> unpackArguments(seq<index ...>){
-		if (function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
+	ReturnType unpackArguments(seq<index ...>){
+		if (function) returnValue = (*function)(std::get<index>(arguments)...);
 
-		//return return_channel.get_future();
+		return returnValue;
 	}
-
-
-	std::promise<ReturnType> return_channel;
 
 	public:
 		
 		typedef ReturnType returnType_; 
 		
 
-		Task() { }
+		Task():function(nullptr), arguments(), returnValue() { }
 		~Task(){}
 		
 		// O objeto copiado eh destruido	
@@ -94,11 +94,11 @@ class Task {
 		template<class PtrToMember, class PtrToObject>
 		Task(PtrToMember m, PtrToObject o, Args...args);
 
-		std::future<ReturnType> operator () () {
+		ReturnType operator () () {
 			return unpackArguments(typename gens<sizeof...(Args)>::type());
 		}
 
-		std::future<ReturnType> getTaskFuture() {  return return_channel.get_future(); }
+		ReturnType getTaskResult() { return returnValue; }
 
 };
 

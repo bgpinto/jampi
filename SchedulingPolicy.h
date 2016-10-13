@@ -43,7 +43,7 @@ class SchedulingPolicy {
 public:
 
 	template<class TASK,  class U = void >	
-	std::future<typename TASK::returnType_ > spawn(TASK& t, int context = 0) {
+	typename TASK::returnType_ spawn(TASK& t, int context = 0) {
 
 		typedef typename std::conditional<std::is_same<void, THREAD>::value, U, THREAD >::type T;
 
@@ -61,9 +61,10 @@ public:
 		
 		thread_table_mutex.unlock();
 
-		thr->operator()(t);
+		// sera que bloqueia?
+		return thr->operator()(t);
 
-		//return t.getTaskFuture();		
+		//return t.getTaskReturn();		
 	
 	}
 
