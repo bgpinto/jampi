@@ -18,7 +18,11 @@
 #include <atomic>
 #include <type_traits>
 #include <system_error>
+#include <future>
+
 #include "ThreadData.h"
+
+
 
 namespace parallel {
 
@@ -39,7 +43,7 @@ class SchedulingPolicy {
 public:
 
 	template<class TASK,  class U = void >	
-	void spawn(TASK& t, int context = 0) {
+	std::future<typename TASK::returnType_ > spawn(TASK& t, int context = 0) {
 
 		typedef typename std::conditional<std::is_same<void, THREAD>::value, U, THREAD >::type T;
 
@@ -57,7 +61,9 @@ public:
 		
 		thread_table_mutex.unlock();
 
-		thr->operator()(t);		
+		thr->operator()(t);
+
+		//return t.getTaskFuture();		
 	
 	}
 

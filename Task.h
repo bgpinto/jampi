@@ -4,7 +4,10 @@
 #include <memory>
 #include <tuple>
 #include <utility>
+#include <future>
+
 #include "Callable.h"
+
 
 /*
  *	Hipotese: parece que make_integer_sequence nao funciona/existe no g++ 4.8.4
@@ -44,15 +47,21 @@ class Task {
 	std::tuple<Args...> arguments;
 
 	template<int ... index>
-	ReturnType unpackArguments(seq<index ...>){
-		if (function) return (*function)(std::get<index>(arguments)...);
+	std::future<ReturnType> unpackArguments(seq<index ...>){
+		if (function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
 
-		return ReturnType();
+		//return return_channel.get_future();
 	}
+
+
+	std::promise<ReturnType> return_channel;
 
 	public:
 		
-		Task() = default;
+		typedef ReturnType returnType_; 
+		
+
+		Task() { }
 		~Task(){}
 		
 		// O objeto copiado eh destruido	
@@ -85,9 +94,11 @@ class Task {
 		template<class PtrToMember, class PtrToObject>
 		Task(PtrToMember m, PtrToObject o, Args...args);
 
-		ReturnType operator () () {
+		std::future<ReturnType> operator () () {
 			return unpackArguments(typename gens<sizeof...(Args)>::type());
 		}
+
+		std::future<ReturnType> getTaskFuture() {  return return_channel.get_future(); }
 
 };
 

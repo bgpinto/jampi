@@ -1,6 +1,9 @@
 #ifndef _THREAD_
 #define _THREAD_
 
+#include <type_traits>
+#include <future>
+
 #include "Task.h"
 
 namespace parallel {
@@ -20,10 +23,11 @@ public:
 // possiveis impedimentos:
 // (1) virtual nao pode ser template
 // (2) como descobrir o returntype de task? nao eh dificil TASK::ReturnType
-template<class TASK>
+template< class TASK >
 class Thread : public virtual ThreadInterface {
 public:
-	virtual void operator()(TASK&) = 0;
+	typedef typename TASK::returnType_ ReturnType;
+	virtual std::future<typename TASK::returnType_> operator()(TASK&) = 0;
 	virtual ~Thread(){} 
 
 };
