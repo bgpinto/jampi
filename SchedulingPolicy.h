@@ -22,13 +22,14 @@
 
 #include "ThreadData.h"
 
-
+#include "SchedAlgorithm.h"
 
 namespace parallel {
 
 template
 <
 	class Algorithm,
+	class AssertCompatible = typename std::enable_if< std::is_base_of< typename parallel::SchedAlgorithm, Algorithm>::value >::type,
 	class THREAD = void 
 >
 class SchedulingPolicy {
@@ -42,6 +43,11 @@ class SchedulingPolicy {
 
 public:
 
+	// A proposta:
+	// Irei introduzir a interface do algoritmo de escalonamento
+	// logo, ela tem q ser generica a ponto de:
+	// (1) nao alterar a semantica do spawn, mesmo mudando 2 linhas importantes
+	// (2) nao alterar a semantica do join
 	template<class TASK,  class U = void >	
 	typename TASK::returnType_ spawn(TASK& t, int context = 0) {
 
@@ -51,8 +57,10 @@ public:
 		
 		context_join.store(context_join);
 
-		T* thr = new T;
+		// ah ideia aqui eh: associa um vp com esse contexto e tarefa
+		T* thr = scheme.template create<T>(context);
 
+		// salva esse vp + contexto + task 
 		thread_table[thread_counter].setThreadPointer(thr);
 		thread_table[thread_counter].setThreadContext(context);
 		thread_counter++;
@@ -62,13 +70,18 @@ public:
 		thread_table_mutex.unlock();
 
 		// sera que bloqueia?
-		return thr->operator()(t);
+		// roda essa task nesse vp e retorna seu resultado
+		//return thr->operator()(t);
+
+		return scheme.template execute<TASK>(t, context );
 
 		//return t.getTaskReturn();		
 	
 	}
 
-
+	// ah ideia aqui eh:
+	// pede para aquele vp que tem a tarefa associada com o contexto x terminar de executar
+	// a tarefa
 	void sync(int context = 0) {
 		int inserted_threads = thread_counter; 
 		for (int i = 0; i < inserted_threads; i++) { 
