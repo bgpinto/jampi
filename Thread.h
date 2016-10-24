@@ -12,6 +12,14 @@ class ThreadInterface {
 public:
 	virtual ~ThreadInterface() {} 
 	virtual void join() = 0;
+	
+	ThreadInterface() = default;
+	ThreadInterface(const ThreadInterface&) = default;
+	ThreadInterface(ThreadInterface&&) = default;
+	ThreadInterface& operator = (const ThreadInterface&) = default;
+	ThreadInterface& operator = (ThreadInterface&&) = default;
+
+	
 };
 
 // Uma ideia: tentar criar um type trait que deduz o tipo
@@ -28,8 +36,13 @@ class Thread : public virtual ThreadInterface {
 public:
 	//typedef typename TASK::returnType_ ReturnType; nao sei se precisa
 	virtual typename TASK::returnType_ operator()(TASK&) = 0;
-	virtual ~Thread(){} 
+	virtual ~Thread(){}
 
+	Thread() = default;	
+	Thread(const Thread&) = default;	
+	Thread(Thread&&) = default;	
+	Thread& operator = (const Thread&) = default;	
+	Thread& operator = (Thread&&) = default;	
 };
 	
 
