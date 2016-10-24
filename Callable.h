@@ -20,6 +20,15 @@ template
 >
 class Callable {
 	public:
+		
+		Callable(const Callable&) = default;
+		Callable& operator = ( const Callable&) = default;
+
+		Callable() = default;
+		Callable(Callable&&) = default;
+		Callable& operator = (Callable&&) = default;
+	
+
 		virtual ReturnType operator()(Args... args) = 0;
 		virtual Callable<ReturnType, Args...>* clone() const = 0;
 		virtual ~Callable() {}
@@ -54,8 +63,16 @@ class CallableImpl : public Callable<ReturnType, Args...>
 			return *this;	
 		}
 
+		CallableImpl(CallableImpl&& other):callable(std::move(other.callable)) {}
+
+		CallableImpl& operator = ( CallableImpl&& other) { 
+			callable = std::move(other.callable);
+			return *this;
+		}
+
 		ReturnType operator() (Args... args) {
-			return callable(args...);
+			return (callable)(args...);
+			//return ReturnType();
 		}
 
 		
@@ -90,6 +107,15 @@ class MemberCallableImpl : public Callable<ReturnType, Args...>
 	MemberCallableImpl& operator = (const MemberCallableImpl& m) {
 		obj = m.obj;
 		callable = m.callable;
+		return *this;
+	}
+
+	MemberCallableImpl(MemberCallableImpl&& other):callable(std::move(other.callable)), obj(std::move(other.obj)) { }
+
+	MemberCallableImpl& operator= ( MemberCallableImpl&& other) { 
+		obj = std::move(other.obj);
+		callable = std::move(other.callable);	
+
 		return *this;
 	}
 

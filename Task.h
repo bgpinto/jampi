@@ -9,6 +9,8 @@
 
 #include "Callable.h"
 
+#include <iostream>
+
 
 namespace parallel {
 
@@ -38,7 +40,9 @@ template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
 template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
 
 
-
+// Mesmo problema que com thread, porem
+// uma possibilidade seria usar 
+// getTaskFuture como funcao template, talvez resolva; [ verificar viabilidade]
 class TaskInterface {
 public:
 	virtual void operator()() = 0;
@@ -64,8 +68,6 @@ class Task : public virtual TaskInterface {
 	template<int ... index>
 	void unpackArguments(seq<index ...>){
 		if (function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
-
-		//return ReturnType();
 	}
 
 	public:
@@ -74,13 +76,54 @@ class Task : public virtual TaskInterface {
 		
 
 		Task():function(nullptr), arguments(), return_channel() { }
-		~Task(){}
+		//~Task(){} devo definir? da erro? eh semanticamente correto?
 		
 		// O objeto copiado eh destruido	
 		//Task(Task& t):arguments(t.arguments), function( new Callable<ReturnType, Args ...>( *t.function )) {
 		       //t.function.reset();
 		 		
 		//}
+
+		
+		Task(const Task& t):arguments(t.arguments) {
+	      
+			Task& other = const_cast<Task&>(t);
+			function = std::move(other.function);
+			return_channel = std::move(other.return_channel);
+			
+			//function.reset(t.function.release());
+			//return_channel.swap()
+		}
+		
+		Task& operator=(const Task& t) {
+	       		
+			Task& other = const_cast<Task&>(t);
+			
+			arguments = std::move(t.arguments);
+			function = std::move(other.function);
+			return_channel = std::move(other.return_channel);
+
+			return *this;
+
+		}
+
+		/*
+		Task(const Task& t):arguments( std::move(t.arguments)) { 
+			function.reset(t.function.release());
+			return_channel.swap(t.return_channel());
+
+		} 
+		Task& operator = (const Task& t) { 
+			arguments = std::move(t.arguments);
+			
+			function.reset(t.function.release());
+			return_channel.swap(t.return_channel());
+
+				
+
+			return *this;
+		} */
+		
 
 		/*	
 		Task& operator = (const Task& t) {
@@ -89,6 +132,9 @@ class Task : public virtual TaskInterface {
 			return *this;
 		}*/
 
+		/* tentanto implementar move semantics <-------- a partir daqui
+		*/
+		/*
 		Task(const Task& t):arguments(t.arguments) {
 		       function.reset(t.function.release());
 		}
@@ -96,6 +142,27 @@ class Task : public virtual TaskInterface {
 		Task& operator = (Task& t) {
 			function.reset(t.function.release());
 		       	arguments = t.arguments;	
+			return *this;
+		}*/
+		
+
+
+
+		// acho que tem que implementar move nas subs
+		Task( Task&& other):
+			function(std::move(other.function)),
+			arguments( std::move(other.arguments)),
+		     	return_channel( std::move(other.return_channel))	
+		{
+			//other.function.release();
+		}
+
+		Task& operator = (Task&& other) {
+			
+			function  = std::move(other.function);
+			arguments = std::move(other.arguments);
+			return_channel = std::move(other.return_channel);
+
 			return *this;
 		}
 
