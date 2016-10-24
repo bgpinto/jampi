@@ -38,12 +38,21 @@ template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
 template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
 
 
+
+class TaskInterface {
+public:
+	virtual void operator()() = 0;
+	virtual ~TaskInterface(){}	
+};
+
+
+
 template
 <
 	typename ReturnType = void,
 	typename ...Args
 >
-class Task {
+class Task : public virtual TaskInterface {
 	
 	std::unique_ptr< Callable<ReturnType, Args...> > function;
 	
@@ -53,10 +62,10 @@ class Task {
 	std::promise<ReturnType> return_channel;
 
 	template<int ... index>
-	ReturnType unpackArguments(seq<index ...>){
+	void unpackArguments(seq<index ...>){
 		if (function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
 
-		return ReturnType();
+		//return ReturnType();
 	}
 
 	public:
@@ -97,8 +106,8 @@ class Task {
 		template<class PtrToMember, class PtrToObject>
 		Task(PtrToMember m, PtrToObject o, Args...args);
 
-		ReturnType operator () () {
-			return unpackArguments(typename gens<sizeof...(Args)>::type());
+		void operator () () {
+			unpackArguments(typename gens<sizeof...(Args)>::type());
 		}
 
 		std::future<ReturnType> getTaskFuture() { return return_channel.get_future(); }
