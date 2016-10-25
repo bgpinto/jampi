@@ -34,7 +34,6 @@ public:
 template< class TASK >
 class Thread : public virtual ThreadInterface {
 public:
-	//typedef typename TASK::returnType_ ReturnType; nao sei se precisa
 	virtual typename TASK::returnType_ operator()(TASK&) = 0;
 	virtual ~Thread(){}
 

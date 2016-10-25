@@ -19,6 +19,8 @@
 #include <type_traits>
 #include <system_error>
 #include <future>
+#include <unordered_map>
+
 
 #include "ThreadData.h"
 
@@ -29,18 +31,19 @@ namespace parallel {
 template
 <
 	class Algorithm,
-	class AssertCompatible = typename std::enable_if< std::is_base_of< typename parallel::SchedAlgorithm, Algorithm>::value >::type,
-	class THREAD = void 
+	class THREAD = void, 
+	class AssertCompatible = typename std::enable_if< std::is_base_of< typename parallel::SchedAlgorithm, Algorithm>::value >::type
 >
 class SchedulingPolicy {
 	
 	Algorithm scheme;
 	std::mutex thread_table_mutex;
-	std::atomic<int> context_join;
+	std::atomic<int> context_allocate;
 	int thread_counter;
 
-	parallel::ThreadData* thread_table;
+	//parallel::ThreadData* thread_table;
 
+	std::unordered_multimap<int, parallel::ThreadInterface*> thread_table;
 public:
 
 	// A proposta:
@@ -55,25 +58,32 @@ public:
 
 		thread_table_mutex.lock();
 		
-		context_join.store(context_join);
+		context_allocate.store(context);
 
 		// ah ideia aqui eh: associa um vp com esse contexto e tarefa
-		T* thr = scheme.template create<T>(context);
+		//T* thr = scheme.template create<T>(context);
+		T* thr = new T;
 
 		// salva esse vp + contexto + task 
-		thread_table[thread_counter].setThreadPointer(thr);
-		thread_table[thread_counter].setThreadContext(context);
+		//thread_table[thread_counter].setThreadPointer(thr);
+		//thread_table[thread_counter].setThreadContext(context);
+		
+		thread_table.insert(std::make_pair(context, thr));
+
 		thread_counter++;
 
-		context_join.store(-1);
+		context_allocate.store(-1);
 		
 		thread_table_mutex.unlock();
 
 		// sera que bloqueia?
 		// roda essa task nesse vp e retorna seu resultado
-		//return thr->operator()(t);
+		return thr->operator()(t);
 
-		return scheme.template execute<TASK>(t, context );
+		
+		// Acho que a chamada para execute vai precisar saber
+		// o tipo de thread tambem
+		//return scheme.template execute<TASK>(t, context );
 
 		//return t.getTaskReturn();		
 	
@@ -82,13 +92,39 @@ public:
 	// ah ideia aqui eh:
 	// pede para aquele vp que tem a tarefa associada com o contexto x terminar de executar
 	// a tarefa
+	//
+	
+	void sync(int context = 0) { 
+	
+		// nao sincroniza enquanto aloca	
+		int current_context = context_allocate.load();
+		while(!context_allocate.compare_exchange_weak(current_context, context) );
+
+		auto joinable_threads = thread_table.equal_range(context);
+
+		for (auto it = joinable_threads.first; it != joinable_threads.second; ++it ) { 
+			try { 
+				it->second->join();
+				//thread_table.erase(it);
+				//delete it->second;
+			} catch(std::system_error& se) { 
+			
+			}
+		}
+
+
+		// deveria chamar erase, mas acho que da problema
+	}
+
+
+	/*
 	void sync(int context = 0) {
 		int inserted_threads = thread_counter; 
 		for (int i = 0; i < inserted_threads; i++) { 
 			if ( thread_table[i].equals(context)) { 
 				try { 
-					int current_context = context_join.load();
-					while(!context_join.compare_exchange_weak(current_context, context) );
+					int current_context = context_allocate.load();
+					while(!context_allocate.compare_exchange_weak(current_context, context) );
 						
 					thread_table[i].join_request();			
 
@@ -102,29 +138,47 @@ public:
 			 }
 
 		}
-	}
+	}*/
 	
 	
 	
 	// Talvez eu tenha que guardar size para o caso do cara
 	// tentar alocar mais threads que size;;
+	/*
 	SchedulingPolicy(const unsigned int size): 
-			 context_join(0),
+			 context_allocate(0),
 			 thread_counter(0)
 			{ thread_table = new parallel::ThreadData[size];}
 
+	*/
+
+	SchedulingPolicy() = default;
+	
 	~SchedulingPolicy(){
 
-		for (int i = 0; i < thread_counter; i++) { 
-			if (thread_table[i].getThreadPointer()) thread_table[i].join_request();
+		for (auto& it : thread_table ) {    
+			try { 
+				
+				if (it.second != nullptr) { 
+					it.second->join();
+					delete it.second;
+				}
+
+			}catch (std::system_error& se ) { 
+			
+			}
+
 		}
-		
-		if (thread_table != nullptr) {  delete[] thread_table;  }
+
+				
 	}
 	
 	
 	SchedulingPolicy(const SchedulingPolicy&) = delete;
 	SchedulingPolicy& operator = (const SchedulingPolicy&) = delete;
+
+	SchedulingPolicy(SchedulingPolicy&&) = delete;
+	SchedulingPolicy& operator = (SchedulingPolicy&&) = delete;
 
 };
 
