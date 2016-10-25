@@ -74,7 +74,6 @@ class Task : public virtual TaskInterface {
 		
 		typedef ReturnType returnType_; 
 		
-
 		Task():function(nullptr), arguments(), return_channel() { }
 		//~Task(){} devo definir? da erro? eh semanticamente correto?
 		

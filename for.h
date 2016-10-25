@@ -59,6 +59,18 @@ void for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) {
 	 
 }
 
+/*
+ * Implementar move semantics na classe range e
+ * uma versao do for que aceite esse rvalue,
+ * (se bem que pode ja ta implementado... (vide default)) 
+ *
+ * */
+
+/*
+ * Com as mudancas no spawn, nao sei se os padroes compilam;
+ *
+ *
+ * */
 
 template
 <
