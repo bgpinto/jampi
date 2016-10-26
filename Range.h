@@ -20,7 +20,24 @@ class Range {
 			return *this;
 		}
 
-		~Range(){}
+		
+		Range(Range&& r):begin_(r.begin_), end_(r.end_) { 
+			r.begin_ = 0;
+			r.end_ = 0;
+		}
+
+		Range& operator = (Range&& r ) { 
+			
+			this->begin_ = r.begin_;	
+			this->end_ = r.end_;	
+			
+			r.begin_ = 0;
+			r.end_ = 0;
+
+			return *this;
+		}
+
+		~Range() = default;
 
 
 		int begin() {return begin_; }

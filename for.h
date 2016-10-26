@@ -29,19 +29,19 @@ template
 	typename Func
 
 >
-void for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) { 
+int for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) { 
 
 	int size = r.size(); 
 
-	if ( (size/chunk) > 1 ) { 
+		if ( (size/chunk) > 1 ) { 
 	
 		int shift = size / 2;
 
 		parallel::Range left_range( r.begin(), r.begin() + shift );
 		parallel::Range right_range( r.begin() + shift, r.end() );
 
-		parallel::Task<void, SCHED&, parallel::Range& , int, Func&> left(for_helper<SCHED, ThreadType, Func>, policy, left_range, chunk, f );
-		parallel::Task<void, SCHED&, parallel::Range& , int, Func&> right(for_helper<SCHED, ThreadType, Func>, policy, right_range, chunk, f );
+		parallel::Task<int, SCHED&, parallel::Range& , int,Func&> left(for_helper<SCHED, ThreadType, Func>, policy, left_range, chunk, f );
+		parallel::Task<int, SCHED&, parallel::Range& , int,Func&> right(for_helper<SCHED, ThreadType, Func>, policy, right_range, chunk, f );
 
 
 		int context = generate_context(shift * 7 * 29);
@@ -56,7 +56,7 @@ void for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) {
 
 	} else f(r); 
 	
-	 
+	return 1;	 
 }
 
 /*
@@ -67,30 +67,30 @@ void for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) {
  * */
 
 /*
- * Com as mudancas no spawn, nao sei se os padroes compilam;
+ * Para que os padroes pudessem compilar, 
+ * houveram modificacoes nos padroes. Isso deve ser limpado;
  *
  *
  * */
 
+// Implementado deducao do parametro que representa invocavel
 template
 <
 	typename SchedAlg,
        	template <typename> class ThreadType,
 	typename Func	
 >
-void For(parallel::Range& r, int chunk, Func& f ) { 
+void For(parallel::Range& r, int chunk, const Func& f ) { 
 
-	if (chunk == 0) return;
+	if (chunk == 0 || chunk >= r.size() ) return;
 
-	parallel::SchedulingPolicy<SchedAlg> scheduler(10000);
+	parallel::SchedulingPolicy<SchedAlg> scheduler;
 
-	for_helper<decltype(scheduler), ThreadType, Func>(scheduler, r, chunk, f );
-
-
+	for_helper<decltype(scheduler), ThreadType, typename std::remove_cv<Func>::type>(scheduler, r, chunk, const_cast<Func&>(f) ); 
 }
 
-
-
+// rodando teste no valgrind retornou sem erros, porem com isso:
+// used_suppression:  1 dl-hack3-cond-1 /usr/lib/valgrind/default.supp:1206
 
 };
 
