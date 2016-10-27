@@ -1,6 +1,7 @@
 #ifndef DEFAULT_THREAD
 #define DEFAULT_THREAD
 
+#include <thread>
 #include "Thread.h"
 
 template<class TASK>
