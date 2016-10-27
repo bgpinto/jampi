@@ -15,10 +15,9 @@
 #include <type_traits>
 #include "Task.h"
 #include "SchedulingPolicy.h"
-
 #include "Range.h"
 #include "ContextGenerator.h"
-
+#include "default_thread.h"
 
 namespace parallel {
 
@@ -29,7 +28,7 @@ template
 	typename Func
 
 >
-int for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) { 
+void for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) { 
 
 	int size = r.size(); 
 
@@ -40,8 +39,8 @@ int for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) {
 		parallel::Range left_range( r.begin(), r.begin() + shift );
 		parallel::Range right_range( r.begin() + shift, r.end() );
 
-		parallel::Task<int, SCHED&, parallel::Range& , int,Func&> left(for_helper<SCHED, ThreadType, Func>, policy, left_range, chunk, f );
-		parallel::Task<int, SCHED&, parallel::Range& , int,Func&> right(for_helper<SCHED, ThreadType, Func>, policy, right_range, chunk, f );
+		parallel::Task<void, SCHED&, parallel::Range& , int,Func&> left(for_helper<SCHED, ThreadType, Func>, policy, left_range, chunk, f );
+		parallel::Task<void, SCHED&, parallel::Range& , int,Func&> right(for_helper<SCHED, ThreadType, Func>, policy, right_range, chunk, f );
 
 
 		int context = generate_context(shift * 7 * 29);
@@ -56,7 +55,6 @@ int for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) {
 
 	} else f(r); 
 	
-	return 1;	 
 }
 
 /*
@@ -77,10 +75,10 @@ int for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) {
 template
 <
 	typename SchedAlg,
-       	template <typename> class ThreadType,
+       	template <typename> class ThreadType = DefaultThread,
 	typename Func	
 >
-void For(parallel::Range& r, int chunk, const Func& f ) { 
+void For(parallel::Range& r, int chunk , const Func& f ) { 
 
 	if (chunk == 0 || chunk >= r.size() ) return;
 
@@ -88,6 +86,25 @@ void For(parallel::Range& r, int chunk, const Func& f ) {
 
 	for_helper<decltype(scheduler), ThreadType, typename std::remove_cv<Func>::type>(scheduler, r, chunk, const_cast<Func&>(f) ); 
 }
+
+// Rvalue adicionado, mas nao testado;
+// outro ponto:
+// 	acho que esse for nao funciona com ponteiro para membro de classe; -> arrumar
+template
+<
+	typename SchedAlg,
+       	template <typename> class ThreadType = DefaultThread,
+	typename Func	
+>
+void For(parallel::Range&& r, int chunk , const Func& f ) { 
+
+	if (chunk == 0 || chunk >= r.size() ) return;
+
+	parallel::SchedulingPolicy<SchedAlg> scheduler;
+
+	for_helper<decltype(scheduler), ThreadType, typename std::remove_cv<Func>::type>(scheduler, r, chunk, const_cast<Func&>(f) ); 
+}
+
 
 // rodando teste no valgrind retornou sem erros, porem com isso:
 // used_suppression:  1 dl-hack3-cond-1 /usr/lib/valgrind/default.supp:1206
