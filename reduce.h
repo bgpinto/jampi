@@ -6,6 +6,8 @@
 #include <atomic>
 #include <iostream>
 
+
+#include "default_thread.h"
 #include "SchedulingPolicy.h"
 
 
@@ -59,7 +61,7 @@ T reduce_helper(SchedulerType& S, std::vector<T>& collection, int size) {
 
 		for (int i = 0; i < level_index; i++ ) {
 
-			parallel::Task<int> reduce_job([i, level_index, &collection]( )->int {
+			parallel::Task<void> reduce_job([i, level_index, &collection]( )->void{
 				
 				ReductionOperator op;	
 
@@ -67,7 +69,6 @@ T reduce_helper(SchedulerType& S, std::vector<T>& collection, int size) {
 				
 				collection[i] = op(collection[i], collection[index]);
 
-				return 1; // limitacao do future - sera removido			
 			});
 
 			using TASK = decltype(reduce_job);
@@ -88,14 +89,12 @@ T reduce_helper(SchedulerType& S, std::vector<T>& collection, int size) {
 template
 <
 	typename SchedAlg,
-	template <typename> class ThreadType,
 	typename ReductionOperator, 
-	typename T
+	typename T,
+	template <typename> class ThreadType = DefaultThread
 >	
 T reduce(std::vector<T>& collection) { 
 
-	// construtor temporario, por que ta alocando memoria direto	
-	//parallel::SchedulingPolicy<SchedAlg> scheduler(1000);	
 	parallel::SchedulingPolicy<SchedAlg> scheduler;	
 
 	return reduce_helper<decltype(scheduler), ThreadType, ReductionOperator, T>(scheduler, collection, collection.size()); 
