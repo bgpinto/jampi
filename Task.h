@@ -4,12 +4,10 @@
 #include <memory>
 #include <tuple>
 #include <utility>
-
 #include <future>
 
 #include "Callable.h"
 
-#include <iostream>
 
 
 namespace parallel {
@@ -40,15 +38,10 @@ template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
 template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
 
 
-// Mesmo problema que com thread, porem
-// uma possibilidade seria usar 
-// getTaskFuture como funcao template, talvez resolva; [ verificar viabilidade]
-class TaskInterface {
+lass TaskInterface {
 public:
 	virtual void operator()() = 0;
 	virtual ~TaskInterface(){}
-
-	// adicionando depois dos testes com move semantics [ pode ser problema ]
 	
 	TaskInterface() = default;
 	TaskInterface(const TaskInterface&) = default;
@@ -59,11 +52,13 @@ public:
 		
 };
 
+template<class T>
+class overload_tag { typedef T type; };
 
 
 template
 <
-	typename ReturnType = void,
+	typename ReturnType,
 	typename ...Args
 >
 class Task : public virtual TaskInterface {
@@ -72,16 +67,25 @@ class Task : public virtual TaskInterface {
 	
 	std::tuple<Args...> arguments;
 
-	
 	std::promise<ReturnType> return_channel;
 
-	template<int ... index>
-	void unpackArguments(seq<index ...>){
-		if (function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
-	}
 
-	public:
-		
+	template<int ...index, class T>
+	void apply(seq<index...>, overload_tag<T>) { 
+	       if(function) return_channel.set_value( (*function)(std::get<index>(arguments)...) ) ;
+	}	
+
+	template<int ...index>
+	void apply(seq<index...>, overload_tag<void>) {
+	       if (function) { 
+	       	    (*function)(std::get<index>(arguments)...);
+		     return_channel.set_value(); 
+	       }
+	}	
+
+	public: 
+
+
 		typedef ReturnType returnType_; 
 		
 		Task():function(nullptr), arguments(), return_channel() { }
@@ -106,7 +110,7 @@ class Task : public virtual TaskInterface {
 		Task( Task&& other):
 			function(std::move(other.function)),
 			arguments( std::move(other.arguments)),
-		     	return_channel( std::move(other.return_channel))	{ }
+		     	return_channel( std::move(other.return_channel)	{ }
 
 		Task& operator = (Task&& other) {
 			
@@ -117,7 +121,6 @@ class Task : public virtual TaskInterface {
 			return *this;
 		}
 
-		// Callable tricks for non-member function calls
 		template<class Fn>
 		Task(Fn f, Args...args);
 
@@ -125,7 +128,7 @@ class Task : public virtual TaskInterface {
 		Task(PtrToMember m, PtrToObject o, Args...args);
 
 		void operator () () {
-			unpackArguments(typename gens<sizeof...(Args)>::type());
+			apply(typename gens<sizeof...(Args)>::type(), overload_tag<ReturnType>{});
 		}
 
 		std::future<ReturnType> getTaskFuture() { return return_channel.get_future(); }
@@ -139,7 +142,8 @@ template
 
 >
 template<class Fn>
-Task<ReturnType, Args...>::Task(Fn f, Args...args):function( new CallableImpl<Fn, ReturnType, Args...>(f) ),arguments(std::tie(args...))
+Task<ReturnType, Args...>::Task(Fn f, Args...args):
+function( new CallableImpl<Fn, ReturnType, Args...>(f) ),arguments(std::tie(args...))
 {}
 
 
@@ -149,7 +153,9 @@ template
 	typename ...Args
 >
 template<class PtrToMember, class PtrToObject>
-Task<ReturnType, Args...>::Task(PtrToMember m, PtrToObject o, Args...args):function( new MemberCallableImpl<PtrToMember, PtrToObject, ReturnType, Args...>(m, o) ), arguments(std::tie(args...))
+Task<ReturnType, Args...>::Task(PtrToMember m, PtrToObject o, Args...args):
+function( new MemberCallableImpl<PtrToMember, PtrToObject, ReturnType, Args...>(m, o) ),
+arguments(std::tie(args...))
 {}
 
 
