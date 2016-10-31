@@ -1,7 +1,6 @@
 #ifndef PARALLEL_SCHEDALGORITHM
 #define PARALLEL_SCHEDALGORITHM
 
-#include "Task.h"
 #include "Thread.h"
 
 
@@ -15,7 +14,8 @@ public:
 	
 	// para o vp associado com esse contexto, executa essa tarefa
 	template<class TASK>
-	typename TASK::returnType_ execute(TASK& t, int ctx) { return TASK::returnType_(); }
+	//typename TASK::returnType_ execute(TASK& t, int ctx) { return TASK::returnType_(); }
+	void execute(TASK& t, int ctx) { }
 
 };
 
