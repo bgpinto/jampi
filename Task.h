@@ -38,7 +38,7 @@ template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
 template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
 
 
-lass TaskInterface {
+class TaskInterface {
 public:
 	virtual void operator()() = 0;
 	virtual ~TaskInterface(){}
@@ -110,7 +110,7 @@ class Task : public virtual TaskInterface {
 		Task( Task&& other):
 			function(std::move(other.function)),
 			arguments( std::move(other.arguments)),
-		     	return_channel( std::move(other.return_channel)	{ }
+		     	return_channel( std::move(other.return_channel)){ }
 
 		Task& operator = (Task&& other) {
 			
