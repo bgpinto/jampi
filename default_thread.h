@@ -21,6 +21,7 @@ public:
 	}		
 
 
+	/*
 	typename TASK::returnType_  operator()( TASK & t) { 
 	
 		auto task_future = t.getTaskFuture();
@@ -29,7 +30,12 @@ public:
 		//cpu = std::thread(t); 
 
 		return task_future.get();
+	}*/
+
+	void operator()(TASK& t) { 
+		cpu = std::thread(std::ref(t));
 	}
+	
 	void join() {   if ( cpu.joinable()) cpu.join();   }
 
 }; 
