@@ -26,7 +26,6 @@ template
 	class SCHED,
 	template <typename> class ThreadType,
 	typename Func
-
 >
 void for_helper(SCHED& policy , parallel::Range& r, int chunk, Func& f ) { 
 

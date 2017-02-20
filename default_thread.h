@@ -20,18 +20,6 @@ public:
 		return *this;
 	}		
 
-
-	/*
-	typename TASK::returnType_  operator()( TASK & t) { 
-	
-		auto task_future = t.getTaskFuture();
-	
-		cpu = std::thread(std::ref(t)); 
-		//cpu = std::thread(t); 
-
-		return task_future.get();
-	}*/
-
 	void operator()(TASK& t) { 
 		cpu = std::thread(std::ref(t));
 	}

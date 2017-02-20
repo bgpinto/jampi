@@ -11,28 +11,6 @@
 #include "SchedulingPolicy.h"
 
 
-
-/*
-class AssertCompatible =
-	std::enable_if<
-		std::is_base_of< parallel::Policy, P>::value
-	>::type
-*/
-
-
-/*
- *	Mesmo com mudancas de future e etc,
- *	o algoritmo funciona corretamente;
- *
- *	Vale notar que deve ser realizado uma limpeza assim que
- *	a versao final de SchedulingPolicy ficar pronto;
- *
- * 	Ainda, acho que eh possivel melhorar esse codigo
- * 	se instanciar o escalonador com um tipo uniforme
- *	
- * */
-
-
 namespace parallel {
 
 
