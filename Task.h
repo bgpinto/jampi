@@ -30,7 +30,9 @@ namespace parallel {
  *
  * */
 
-
+// Meta template necessaria para "desempacotar" (google template parameter packing/unpacking)
+// uma tupla de modo a ser compativel com C++11 ( no c++14 ja tem um type trait chamado integer_sequence
+// porem nao serve em C++11, foco do trabalho).
 template<int ...> struct seq {};
 
 template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
@@ -52,6 +54,9 @@ public:
 		
 };
 
+
+// Tag para especializar um tipo de decidir entre uma implementacao (geral) ou outra
+// (void, especifico).
 template<class T>
 class overload_tag { typedef T type; };
 
